@@ -49,10 +49,10 @@ class GestorPartidasLocal:
         hilo.start()
 
     def abrir_link_donar(self):
-        webbrowser.open("https://youtube.com")
+        webbrowser.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
     def abrir_link_contacto(self):
-        webbrowser.open("https://x.com")
+        webbrowser.open("https://x.com/_noxbat")
 
     def seleccionar_todo_el_listado(self):
         self.box.selection_clear(0, tk.END)
