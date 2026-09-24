@@ -311,7 +311,7 @@ class GestorPartidasLocal:
         self.box.delete(0, tk.END)
         self.indexar_backups_en_disco()
         
-        # Filtros con tus exclusiones solicitadas añadidas (0tros, frameview, maxon, ocat)
+        # Filtros de exclusion siempre en minuscula
         exclusiones_sistema = [
             "microsoft", "temp", "packages", "cache", "adobe", "google", "nvidia", 
             "discord", "spotify", "battle.net", "origin", "comms", "itunes", "vlc",
@@ -330,7 +330,8 @@ class GestorPartidasLocal:
             "userbenchmark", "zaap", "ankama launcher", "goldberg eos emu",
             "setup", "speech", "teamspeak", "truckersmp", "ul", "unrealengine",
             "uv", "virtualstore", "vivox", "vs revo group",
-            "0tros", "frameview"
+            "0tr0s", "frameview", "bionic", "github desktop", "lm studio", "bravesoftware", "mod.io",
+            "placeholdertilelogofolder", "lm-studio-updater", "githubdesktop"
         ]
         
         bloques_origen = [
