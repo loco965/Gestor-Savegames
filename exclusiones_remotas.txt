@@ -68,6 +68,7 @@ riot games
 steam
 logs
 telemetry
+ankama
 winrar
 utorrent
 stremio
