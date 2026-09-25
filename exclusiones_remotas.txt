@@ -17,5 +17,5 @@ exclusiones_sistema = [
             "setup", "speech", "teamspeak", "truckersmp", "ul", "unrealengine",
             "uv", "virtualstore", "vivox", "vs revo group",
             "0tr0s", "frameview", "bionic", "github desktop", "lm studio", "bravesoftware", "mod.io",
-            "placeholdertilelogofolder", "lm-studio-updater", "githubdesktop"
+            "placeholdertilelogofolder", "lm-studio-updater", "githubdesktop", "code"
         ]
