@@ -187,6 +187,9 @@ class GestorPartidasLocal:
                 for tag_juego in lista_seleccionados:
                     nombre_limpio = self.limpiar_nombre_juego(tag_juego)
                     self.ocultos.add(nombre_limpio)
+                     # Marcamos el juego como oculto en el Listbox
+                    index = self.box.get(0, tk.END).index(tag_juego)
+                    self.box.itemconfig(index, {"bg": "#34495e", "fg": "white"})
                 self.save_data(M_O, self.ocultos)
                 self.scan()
 
@@ -283,9 +286,13 @@ class GestorPartidasLocal:
                         self.rotar_original_en_pc(orig)
                         self.run_cmd(dst, orig)
                         c += 1
-        self.root.after(0, self.scan)
-        accion_str = "respaldaron" if mode == 1 else "restauraron"
-        mb.showinfo("Éxito", f"¡Operación completada! Se {accion_str} {c} partidas marcadas.")
+
+        def finalizar_operacion():
+            accion_str = "respaldaron" if mode == 1 else "restauraron"
+            mb.showinfo("Éxito", f"¡Operación completada! Se {accion_str} {c} partidas marcadas.")
+            self.scan()
+
+        self.root.after(0, finalizar_operacion)
 
     def indexar_backups_en_disco(self):
         self.backups_existentes.clear()
@@ -356,7 +363,7 @@ class GestorPartidasLocal:
         self.juegos.clear()
         self.root.after(0, lambda: self.box.delete(0, tk.END))
         self.indexar_backups_en_disco()
-        
+
         # Filtros de exclusion siempre en minuscula
         exclusiones_sistema = [
             "microsoft", "temp", "packages", "cache", "adobe", "google", "nvidia", 
@@ -388,7 +395,7 @@ class GestorPartidasLocal:
                         exclusiones_sistema = filtros_archivo
             except Exception:
                 pass
-        
+
         bloques_origen = [
             {"titulo": "--- 📄 DOCUMENTOS ---", "ruta": os.path.join(UP, "Documents")},
             {"titulo": "--- 📦 JUEGOS (MY GAMES) ---", "ruta": os.path.join(UP, "Documents/My Games")},
@@ -397,7 +404,6 @@ class GestorPartidasLocal:
             {"titulo": "--- ⚙️ APPDATA ROAMING ---", "ruta": os.path.join(UP, "AppData/Roaming")}
         ]
 
-        # Lógica para escanear de forma dinámica otros discos duros
         letras_discos = [f"{letra}:/" for letra in string.ascii_uppercase if os.path.exists(f"{letra}:/")]
         for disco in letras_discos:
             if disco.upper().startswith("C"):
@@ -419,9 +425,12 @@ class GestorPartidasLocal:
         juegos_encontrados_global = set()
         total_items_detectados = 0
 
+        # Lista temporal para guardar lo que vamos a insertar de golpe en el hilo principal
+        elementos_a_insertar = []
+
         if self.manuales:
-            self.box.insert(tk.END, "")
-            self.box.insert(tk.END, "--- ➕ CARPETAS AÑADIDAS MANUALMENTE ---")
+            elementos_a_insertar.append("")
+            elementos_a_insertar.append("--- ➕ CARPETAS AÑADIDAS MANUALMENTE ---")
             for nombre_manual, ruta_manual in sorted(self.manuales.items()):
                 if nombre_manual in self.ocultos:
                     continue
@@ -430,7 +439,7 @@ class GestorPartidasLocal:
                 tam_str = self.get_folder_size_str(ruta_manual)
                 nv = f"{ind}{nombre_manual} ({tam_str})"
                 self.juegos[nv] = ruta_manual
-                self.box.insert(tk.END, nv)
+                elementos_a_insertar.append(nv)
                 total_items_detectados += 1
 
         for Schuyler in bloques_origen:
@@ -457,8 +466,8 @@ class GestorPartidasLocal:
                                 elementos_carpeta.append(elemento)
                     if elementos_carpeta:
                         elementos_carpeta.sort(key=lambda s: s.lower())
-                        self.box.insert(tk.END, "")
-                        self.box.insert(tk.END, Schuyler["titulo"])
+                        elementos_a_insertar.append("")
+                        elementos_a_insertar.append(Schuyler["titulo"])
                         for el in elementos_carpeta:
                             juegos_encontrados_global.add(el)
                             ind = "[👍 Copia Ok] " if self.check_bkp(el) else "               "
@@ -466,7 +475,7 @@ class GestorPartidasLocal:
                             tam_str = self.get_folder_size_str(r_c)
                             nv = f"{ind}{el} ({tam_str})"
                             self.juegos[nv] = r_c
-                            self.box.insert(tk.END, nv)
+                            elementos_a_insertar.append(nv)
                             total_items_detectados += 1
                 except Exception:
                     continue
@@ -484,17 +493,24 @@ class GestorPartidasLocal:
                 lista_solo_backup.append(nombre_visual)
         if lista_solo_backup:
             lista_solo_backup.sort(key=lambda s: s.lower())
-            self.box.insert(tk.END, "")
-            self.box.insert(tk.END, "--- 💾 SOLO EN CARPETA BACKUP (DESINSTALADOS) ---")
+            elementos_a_insertar.append("")
+            elementos_a_insertar.append("--- 💾 SOLO EN CARPETA BACKUP (DESINSTALADOS) ---")
             for bkp_item in lista_solo_backup:
                 r_c = os.path.join(self.dest, bkp_item).replace("\\", "/")
                 tam_str = self.get_folder_size_str(r_c)
                 nv = f"[👍 Copia Ok] [Solo en Backup] {bkp_item} ({tam_str})"
                 self.juegos[nv] = os.path.join(UP, f"Documents/{bkp_item}").replace("\\", "/")
-                self.box.insert(tk.END, nv)
+                elementos_a_insertar.append(nv)
                 total_items_detectados += 1
-        self.lbl_i.config(text=f"Partidas detectadas ({total_items_detectados}):", fg="#1abc9c" if total_items_detectados else "white")
-        self.btn_scan.config(state="normal", text="🔍 ESCANEAR SAVES")
+
+        # Volvemos al hilo principal de forma segura para rellenar la lista entera y cambiar textos
+        def actualizar_interfaz_grafica():
+            for item in elementos_a_insertar:
+                self.box.insert(tk.END, item)
+            self.lbl_i.config(text=f"Partidas detectadas ({total_items_detectados}):", fg="#1abc9c" if total_items_detectados else "white")
+            self.btn_scan.config(state="normal", text="🔍 ESCANEAR SAVES")
+
+        self.root.after(0, actualizar_interfaz_grafica)
 
     def __init__(self, root):
         self.root = root
