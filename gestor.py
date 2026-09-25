@@ -1,7 +1,6 @@
 import os
 import string
 import shutil
-import zipfile
 import threading
 import webbrowser
 import tkinter as tk
@@ -9,21 +8,25 @@ from tkinter import messagebox as mb
 from tkinter import filedialog as fd
 from tkinter import simpledialog as sd
 import sys
+import urllib.request
+import ast
 
 DESKTOP_PATH = os.path.join(os.environ.get('USERPROFILE', ''), 'Desktop').replace("\\", "/")
 if not os.path.exists(DESKTOP_PATH):
     DESKTOP_PATH = os.path.expanduser("~/Desktop").replace("\\", "/")
 
-BKP = os.path.join(DESKTOP_PATH, "Copias_Seguridad_Juegos").replace("\\", "/")
+APP_GAMESAVES_DIR = os.path.join(os.getenv('LOCALAPPDATA'), 'APP GameSaves').replace("\\", "/")
+if not os.path.exists(APP_GAMESAVES_DIR):
+    os.makedirs(APP_GAMESAVES_DIR, exist_ok=True)
+
+BKP = os.path.join(DESKTOP_PATH, 'Backup Saves').replace("\\", "/")
+if not os.path.exists(BKP):
+    os.makedirs(BKP, exist_ok=True)
 UP = os.environ.get('USERPROFILE', os.path.expanduser('~')).replace("\\", "/")
-
-if getattr(sys, 'frozen', False):
-    CURRENT_DIR = os.path.dirname(os.path.abspath(sys.executable)).replace("\\", "/")
-else:
-    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")
-
-M_O = os.path.join(CURRENT_DIR, "juegos_ocultos.txt").replace("\\", "/")
-M_M = os.path.join(CURRENT_DIR, "juegos_manuales.txt").replace("\\", "/")
+M_O = os.path.join(APP_GAMESAVES_DIR, "juegos_ocultos.txt").replace("\\", "/")
+M_M = os.path.join(APP_GAMESAVES_DIR, "juegos_manuales.txt").replace("\\", "/")
+M_EXC = os.path.join(APP_GAMESAVES_DIR, "exclusiones_remotas.txt").replace("\\", "/") 
+URL_EXCLUSIONES_GITHUB = "https://raw.githubusercontent.com/loco965/Gestor-Savegames/refs/heads/main/exclusiones_remotas.txt"
 
 class GestorPartidasLocal:
     def abrir_carpeta_backups(self):
@@ -89,7 +92,13 @@ class GestorPartidasLocal:
 
     def r_path(self, orig, nombre_juego_limpio):
         so = orig if os.path.isabs(orig) else os.path.join(UP, orig).replace("\\", "/")
-        sub = os.path.join(nombre_juego_limpio, os.path.basename(so))
+        ultimo_directorio = os.path.basename(so)
+        
+        if ultimo_directorio.lower() == nombre_juego_limpio.lower():
+            sub = nombre_juego_limpio
+        else:
+            sub = os.path.join(nombre_juego_limpio, ultimo_directorio)
+            
         return os.path.join(self.dest, sub).replace("\\", "/"), so
 
     def check_bkp(self, folder):
@@ -145,7 +154,7 @@ class GestorPartidasLocal:
         self.centrar_ventana(ventana_ocultos, 380, 450)
         ventana_ocultos.configure(bg="#2c3e50")
         ventana_ocultos.grab_set() 
-        tk.Label(ventana_ocultos, text="Lista de Elementos Ocultos", font=("Arial", 12, "bold"), fg="#1abc9c", bg="#2c3e50").pack(pady=10)
+        tk.Label(ventana_ocultos, text="Lista de Elementos Ocultados", font=("Arial", 12, "bold"), fg="#1abc9c", bg="#2c3e50").pack(pady=10)
         box_ocultos = tk.Listbox(ventana_ocultos, font=("Arial", 11), bg="#34495e", fg="white", selectbackground="#1abc9c", bd=0, highlightthickness=0, selectmode="multiple")
         box_ocultos.pack(padx=15, pady=5, fill="both", expand=True)
         for item in sorted(list(self.ocultos)):
@@ -178,6 +187,9 @@ class GestorPartidasLocal:
                 for tag_juego in lista_seleccionados:
                     nombre_limpio = self.limpiar_nombre_juego(tag_juego)
                     self.ocultos.add(nombre_limpio)
+                     # Marcamos el juego como oculto en el Listbox
+                    index = self.box.get(0, tk.END).index(tag_juego)
+                    self.box.itemconfig(index, {"bg": "#34495e", "fg": "white"})
                 self.save_data(M_O, self.ocultos)
                 self.scan()
 
@@ -224,13 +236,13 @@ class GestorPartidasLocal:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 for linea in f:
-                    if "|||" in linea:
+                     if "|||" in linea:
                         partes = linea.strip().split("|||")
-                        if len(partes) == 2:
+                     if len(partes) == 2:
                             dict_manuales[partes[0]] = partes[1]
             return dict_manuales
         except Exception:
-            return {}
+             return {}
 
     def get_folder_size_str(self, path):
         if not os.path.exists(path):
@@ -274,9 +286,13 @@ class GestorPartidasLocal:
                         self.rotar_original_en_pc(orig)
                         self.run_cmd(dst, orig)
                         c += 1
-        self.root.after(0, self.scan)
-        accion_str = "respaldaron" if mode == 1 else "restauraron"
-        mb.showinfo("Éxito", f"¡Operación completada! Se {accion_str} {c} partidas marcadas.")
+
+        def finalizar_operacion():
+            accion_str = "respaldaron" if mode == 1 else "restauraron"
+            mb.showinfo("Éxito", f"¡Operación completada! Se {accion_str} {c} partidas marcadas.")
+            self.scan()
+
+        self.root.after(0, finalizar_operacion)
 
     def indexar_backups_en_disco(self):
         self.backups_existentes.clear()
@@ -305,12 +321,49 @@ class GestorPartidasLocal:
         except Exception:
             pass
 
+    def actualizar_exclusiones_desde_github(self):
+        """Descarga el txt de GitHub (en formato texto plano) y guarda las exclusiones."""
+        try:
+            self.btn_scan.config(state="disabled", text="⏳ ACTUALIZANDO...")
+
+            # Descargar el contenido del archivo remoto
+            respuesta = urllib.request.urlopen(URL_EXCLUSIONES_GITHUB, timeout=10)
+            contenido_raw = respuesta.read().decode('utf-8')
+
+            # Procesar el texto línea por línea
+            nuevos_filtros = []
+            for linea in contenido_raw.splitlines():
+                linea_limpia = linea.strip().lower()
+                # Ignorar líneas vacías o comentarios
+                if linea_limpia and not linea_limpia.startswith("#"):
+                    nuevos_filtros.append(linea_limpia)
+
+            # Verificar si ya existe el archivo local y eliminarlo
+            exclusiones_path = os.path.join(BKP, "exclusiones_remotas.txt")
+            if os.path.exists(exclusiones_path):
+                os.remove(exclusiones_path)
+
+            if nuevos_filtros:
+                with open(M_EXC, "w", encoding="utf-8") as f:
+                    for filtro in sorted(list(set(nuevos_filtros))):
+                        f.write(f"{filtro}\n")
+
+                self.root.after(0, lambda: mb.showinfo("Éxito", "¡Lista de exclusiones actualizada correctamente desde GitHub!"))
+                self.root.after(0, self.scan)
+            else:
+                raise ValueError("No se encontraron elementos válidos en el archivo remoto.")
+
+        except Exception as e:
+            self.root.after(0, lambda: mb.showerror("Error", f"No se pudieron actualizar las exclusiones.\nDetalle: {e}"))
+        finally:
+            self.root.after(0, lambda: self.btn_scan.config(state="normal", text="🔍 ESCANEAR SAVES"))
+
     def scan(self):
-        self.btn_scan.config(state="disabled", text="⏳ ESCANEANDO...")
+        self.root.after(0, lambda: self.btn_scan.config(state="disabled", text="⏳ ESCANEANDO..."))
         self.juegos.clear()
-        self.box.delete(0, tk.END)
+        self.root.after(0, lambda: self.box.delete(0, tk.END))
         self.indexar_backups_en_disco()
-        
+
         # Filtros de exclusion siempre en minuscula
         exclusiones_sistema = [
             "microsoft", "temp", "packages", "cache", "adobe", "google", "nvidia", 
@@ -333,16 +386,27 @@ class GestorPartidasLocal:
             "0tr0s", "frameview", "bionic", "github desktop", "lm studio", "bravesoftware", "mod.io",
             "placeholdertilelogofolder", "lm-studio-updater", "githubdesktop"
         ]
-        
+
+        if os.path.exists(M_EXC):
+            try:
+                with open(M_EXC, "r", encoding="utf-8") as f:
+                    filtros_archivo = [linea.strip().lower() for linea in f if linea.strip()]
+                    if filtros_archivo:
+                        exclusiones_sistema = filtros_archivo
+            except Exception:
+                pass
+
         bloques_origen = [
             {"titulo": "--- 📄 DOCUMENTOS ---", "ruta": os.path.join(UP, "Documents")},
             {"titulo": "--- 📦 JUEGOS (MY GAMES) ---", "ruta": os.path.join(UP, "Documents/My Games")},
             {"titulo": "--- 🎮 PARTIDAS GUARDADAS (SAVED GAMES) ---", "ruta": os.path.join(UP, "Saved Games")},
+            {"titulo": "--- 📂 GOG GALAXY ---", "ruta": os.path.join(UP, "AppData/Local/://gog.com")},
+            {"titulo": "--- 📂 STEAM (APPDATA) ---", "ruta": os.path.join(UP, "AppData/Local/Steam/userdata")},
+            {"titulo": "--- 📂 STEAM (ARCHIVOS DE PROGRAMA) ---", "ruta": "C:/Program Files (x86)/Steam/userdata"},
             {"titulo": "--- 📁 APPDATA LOCAL ---", "ruta": os.path.join(UP, "AppData/Local")},
             {"titulo": "--- ⚙️ APPDATA ROAMING ---", "ruta": os.path.join(UP, "AppData/Roaming")}
         ]
 
-        # Lógica para escanear de forma dinámica otros discos duros
         letras_discos = [f"{letra}:/" for letra in string.ascii_uppercase if os.path.exists(f"{letra}:/")]
         for disco in letras_discos:
             if disco.upper().startswith("C"):
@@ -364,9 +428,12 @@ class GestorPartidasLocal:
         juegos_encontrados_global = set()
         total_items_detectados = 0
 
+        # Lista temporal para guardar lo que vamos a insertar de golpe en el hilo principal
+        elementos_a_insertar = []
+
         if self.manuales:
-            self.box.insert(tk.END, "")
-            self.box.insert(tk.END, "--- ➕ CARPETAS AÑADIDAS MANUALMENTE ---")
+            elementos_a_insertar.append("")
+            elementos_a_insertar.append("--- ➕ CARPETAS AÑADIDAS MANUALMENTE ---")
             for nombre_manual, ruta_manual in sorted(self.manuales.items()):
                 if nombre_manual in self.ocultos:
                     continue
@@ -375,7 +442,7 @@ class GestorPartidasLocal:
                 tam_str = self.get_folder_size_str(ruta_manual)
                 nv = f"{ind}{nombre_manual} ({tam_str})"
                 self.juegos[nv] = ruta_manual
-                self.box.insert(tk.END, nv)
+                elementos_a_insertar.append(nv)
                 total_items_detectados += 1
 
         for Schuyler in bloques_origen:
@@ -402,8 +469,8 @@ class GestorPartidasLocal:
                                 elementos_carpeta.append(elemento)
                     if elementos_carpeta:
                         elementos_carpeta.sort(key=lambda s: s.lower())
-                        self.box.insert(tk.END, "")
-                        self.box.insert(tk.END, Schuyler["titulo"])
+                        elementos_a_insertar.append("")
+                        elementos_a_insertar.append(Schuyler["titulo"])
                         for el in elementos_carpeta:
                             juegos_encontrados_global.add(el)
                             ind = "[👍 Copia Ok] " if self.check_bkp(el) else "               "
@@ -411,7 +478,7 @@ class GestorPartidasLocal:
                             tam_str = self.get_folder_size_str(r_c)
                             nv = f"{ind}{el} ({tam_str})"
                             self.juegos[nv] = r_c
-                            self.box.insert(tk.END, nv)
+                            elementos_a_insertar.append(nv)
                             total_items_detectados += 1
                 except Exception:
                     continue
@@ -429,17 +496,24 @@ class GestorPartidasLocal:
                 lista_solo_backup.append(nombre_visual)
         if lista_solo_backup:
             lista_solo_backup.sort(key=lambda s: s.lower())
-            self.box.insert(tk.END, "")
-            self.box.insert(tk.END, "--- 💾 SOLO EN CARPETA BACKUP (DESINSTALADOS) ---")
+            elementos_a_insertar.append("")
+            elementos_a_insertar.append("--- 💾 SOLO EN CARPETA BACKUP (DESINSTALADOS) ---")
             for bkp_item in lista_solo_backup:
                 r_c = os.path.join(self.dest, bkp_item).replace("\\", "/")
                 tam_str = self.get_folder_size_str(r_c)
                 nv = f"[👍 Copia Ok] [Solo en Backup] {bkp_item} ({tam_str})"
                 self.juegos[nv] = os.path.join(UP, f"Documents/{bkp_item}").replace("\\", "/")
-                self.box.insert(tk.END, nv)
+                elementos_a_insertar.append(nv)
                 total_items_detectados += 1
-        self.lbl_i.config(text=f"Partidas detectadas ({total_items_detectados}):", fg="#1abc9c" if total_items_detectados else "white")
-        self.btn_scan.config(state="normal", text="🔍 ESCANEAR SAVES")
+
+        # Volvemos al hilo principal de forma segura para rellenar la lista entera y cambiar textos
+        def actualizar_interfaz_grafica():
+            for item in elementos_a_insertar:
+                self.box.insert(tk.END, item)
+            self.lbl_i.config(text=f"Partidas detectadas ({total_items_detectados}):", fg="#1abc9c" if total_items_detectados else "white")
+            self.btn_scan.config(state="normal", text="🔍 ESCANEAR SAVES")
+
+        self.root.after(0, actualizar_interfaz_grafica)
 
     def __init__(self, root):
         self.root = root
@@ -457,6 +531,9 @@ class GestorPartidasLocal:
         f_db.pack(pady=2, fill="x", padx=20)
         self.lbl_db_status = tk.Label(f_db, text="Base de datos: Modo Local", fg="#2ecc71", bg="#2c3e50", font=("Arial", 9, "italic"))
         self.lbl_db_status.pack(side="left")
+        tk.Button(f_db, text="🔄 Actualizar Filtros GitHub", 
+                  command=lambda: self.ejecutar_en_hilo(self.actualizar_exclusiones_desde_github), 
+                  bg="#34495e", fg="#1abc9c", font=("Arial", 8, "bold"), bd=0, cursor="hand2", padx=5).pack(side="right")
         f_r = tk.Frame(root, bg="#34495e", bd=1, relief="solid")
         f_r.pack(pady=5, fill="x", padx=20, ipady=5)
         self.lbl_r = tk.Label(f_r, text=f" Guardando en: {self.dest}", fg="#bdc3c7", bg="#34495e", font=("Arial", 9), wraplength=420, justify="left")
