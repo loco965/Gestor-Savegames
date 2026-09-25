@@ -15,16 +15,17 @@ DESKTOP_PATH = os.path.join(os.environ.get('USERPROFILE', ''), 'Desktop').replac
 if not os.path.exists(DESKTOP_PATH):
     DESKTOP_PATH = os.path.expanduser("~/Desktop").replace("\\", "/")
 
-APP_GAMESAVES_DIR = os.path.join(os.getenv('LOCALAPPDATA'), 'APP GameSaves')
-BKP = APP_GAMESAVES_DIR
-UP = os.environ.get('USERPROFILE', os.path.expanduser('~')).replace("\\", "/")
-
+APP_GAMESAVES_DIR = os.path.join(os.getenv('LOCALAPPDATA'), 'APP GameSaves').replace("\\", "/")
 if not os.path.exists(APP_GAMESAVES_DIR):
     os.makedirs(APP_GAMESAVES_DIR, exist_ok=True)
 
-M_O = os.path.join(BKP, "juegos_ocultos.txt").replace("\\", "/")
-M_M = os.path.join(BKP, "juegos_manuales.txt").replace("\\", "/")
-M_EXC = os.path.join(BKP, "exclusiones_remotas.txt").replace("\\", "/") 
+BKP = os.path.join(DESKTOP_PATH, 'Backup Saves').replace("\\", "/")
+if not os.path.exists(BKP):
+    os.makedirs(BKP, exist_ok=True)
+UP = os.environ.get('USERPROFILE', os.path.expanduser('~')).replace("\\", "/")
+M_O = os.path.join(APP_GAMESAVES_DIR, "juegos_ocultos.txt").replace("\\", "/")
+M_M = os.path.join(APP_GAMESAVES_DIR, "juegos_manuales.txt").replace("\\", "/")
+M_EXC = os.path.join(APP_GAMESAVES_DIR, "exclusiones_remotas.txt").replace("\\", "/") 
 URL_EXCLUSIONES_GITHUB = "https://raw.githubusercontent.com/loco965/Gestor-Savegames/refs/heads/main/exclusiones_remotas.txt"
 
 class GestorPartidasLocal:
@@ -91,7 +92,13 @@ class GestorPartidasLocal:
 
     def r_path(self, orig, nombre_juego_limpio):
         so = orig if os.path.isabs(orig) else os.path.join(UP, orig).replace("\\", "/")
-        sub = os.path.join(nombre_juego_limpio, os.path.basename(so))
+        ultimo_directorio = os.path.basename(so)
+        
+        if ultimo_directorio.lower() == nombre_juego_limpio.lower():
+            sub = nombre_juego_limpio
+        else:
+            sub = os.path.join(nombre_juego_limpio, ultimo_directorio)
+            
         return os.path.join(self.dest, sub).replace("\\", "/"), so
 
     def check_bkp(self, folder):
