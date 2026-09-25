@@ -1,21 +1,107 @@
-exclusiones_sistema = [
-            "microsoft", "temp", "packages", "cache", "adobe", "google", "nvidia", 
-            "discord", "spotify", "battle.net", "origin", "comms", "itunes", "vlc",
-            "skype", "telegram", "audacity", "gimp", "obs-studio", "curseforge",
-            "amd", "ati", "intel", "realtek", "historial", "3dmark", "anydesk",
-            "mi música", "mis imágenes", "mis vídeos", "mi musica", "mis imagenes", "mis videos",
-            "plantillas", "custom office templates", "archivos temporales", "oc_ocat", "ocat",
-            "battleye", "bittorrent", "cef", "comgr", "connecteddevices", "crashdumps", 
-            "crashreport", "datos de programa", "dbg", "discovery", "drivebeyond", 
-            "elevateddiagnostics", "epicgames", "faceit", "futuremark", "g1r", 
-            "gamequest", "gpu3d", "install4j", "isolatedstorage", "jdownloader", 
-            "openshell", "peerdist", "pigeonsimulator", "pip", "programs", "publishers", 
-            "python", "razer", "redengine", "riot games", "steam", "logs", "telemetry",
-            "winrar", "utorrent", "stremio", "libreoffice", "riot client", "easyanticheat",
-            "freac", "jam software", "maxon", "netease", "rapidcrc", "ts3client", 
-            "userbenchmark", "zaap", "ankama launcher", "goldberg eos emu",
-            "setup", "speech", "teamspeak", "truckersmp", "ul", "unrealengine",
-            "uv", "virtualstore", "vivox", "vs revo group",
-            "0tr0s", "frameview", "bionic", "github desktop", "lm studio", "bravesoftware", "mod.io",
-            "placeholdertilelogofolder", "lm-studio-updater", "githubdesktop", "code"
-        ]
+microsoft
+temp
+packages
+cache
+adobe
+google
+nvidia
+discord
+spotify
+battle.net
+origin
+comms
+itunes
+vlc
+skype
+telegram
+audacity
+gimp
+obs-studio
+curseforge
+amd
+ati
+intel
+realtek
+historial
+3dmark
+anydesk
+mi música
+mis imágenes
+mis vídeos
+mi musica
+mis imagenes
+mis videos
+plantillas
+custom office templates
+archivos temporales
+oc_ocat
+ocat
+battleye
+bittorrent
+cef
+comgr
+connecteddevices
+crashdumps
+crashreport
+datos de programa
+dbg
+discovery
+elevateddiagnostics
+epicgames
+faceit
+futuremark
+g1r
+gamequest
+gpu3d
+install4j
+isolatedstorage
+jdownloader
+openshell
+peerdist
+pip
+programs
+publishers
+python
+razer
+redengine
+riot games
+steam
+logs
+telemetry
+winrar
+utorrent
+stremio
+libreoffice
+riot client
+easyanticheat
+freac
+jam software
+maxon
+netease
+rapidcrc
+ts3client
+userbenchmark
+zaap
+ankama launcher
+goldberg eos emu
+setup
+speech
+teamspeak
+truckersmp
+ul
+unrealengine
+uv
+virtualstore
+vivox
+vs revo group
+0tr0s
+frameview
+bionic
+github desktop
+lm studio
+bravesoftware
+mod.io
+placeholdertilelogofolder
+lm-studio-updater
+githubdesktop
+code
