@@ -49,5 +49,5 @@ Una aplicación ligera, automatizada y de código abierto programada en **Python
 
 ## 📝 Créditos y Contacto
 
-Desarrollado por **nox.bat** con ayuda de Inteligencia Artificial local. 
-Si quieres ponerte en contacto, reportar algún fallo o realizar sugerencias para futuras actualizaciones, puedes encontrarme en mi perfil de **X (Twitter):** [@_noxbat](https://x.com).
+*  Desarrollado por **nox.bat** con ayuda de Inteligencia Artificial local. 
+*  Si quieres ponerte en contacto, reportar algún fallo o realizar sugerencias para futuras actualizaciones, puedes encontrarme en mi perfil de **X (Twitter):** [@_noxbat](https://x.com).
